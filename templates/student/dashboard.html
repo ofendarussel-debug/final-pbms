@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard — PLV Projector Reservation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/popups.css') }}">
+</head>
+<body class="app-bg">
+
+    <header class="plv-navbar">
+        <div class="plv-navbar-inner">
+            <a href="{{ url_for('student_dashboard') }}" class="plv-nav-brand">
+                <img src="{{ url_for('static', filename='image/plv-logo.jpg') }}" alt="PLV Logo" class="plv-navbar-logo">
+                <span class="plv-nav-title">PLV Projector Reservation</span>
+            </a>
+
+            <nav class="plv-nav-links">
+                <a href="{{ url_for('student_dashboard') }}" class="plv-nav-item active">Dashboard</a>
+                <a href="{{ url_for('booking.reserve') }}" class="plv-nav-item">Reserve a Projector</a>
+                <a href="{{ url_for('booking.my_reservations') }}" class="plv-nav-item">My Reservations</a>
+            </nav>
+
+            <div class="plv-nav-actions" style="display:flex; align-items:center; gap:10px;">
+                <a href="{{ url_for('booking.profile') }}" class="plv-profile-icon-btn" title="User Profile">&#128100;</a>
+                <button type="button" class="plv-logout-btn" onclick="openModal('logout-modal')">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="s2-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <span>{{ message }}</span>
+                        <button type="button" class="alert-close" onclick="this.parentElement.remove()">&times;</button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="s2-header-row">
+            <div>
+                <h1 class="s2-greeting">Welcome back, {{ session.full_name }}</h1>
+                <p class="s2-subtitle">Manage projector reservations for <strong>{{ session.section_name }}</strong>.</p>
+            </div>
+            <a href="{{ url_for('booking.reserve') }}" class="btn btn-plv-navy">+ Reserve a Projector</a>
+        </div>
+
+        <!-- 3 KPI Summary Cards -->
+        <div class="s2-kpi-grid">
+            <div class="s2-kpi-card">
+                <span class="s2-kpi-label">Pending Requests</span>
+                <strong class="s2-kpi-value">{{ pending_count }}</strong>
+                <span class="s2-kpi-sub">Awaiting admin approval</span>
+            </div>
+            <div class="s2-kpi-card">
+                <span class="s2-kpi-label">Active / Approved</span>
+                <strong class="s2-kpi-value">{{ approved_count }}</strong>
+                <span class="s2-kpi-sub">Confirmed schedules</span>
+            </div>
+            <div class="s2-kpi-card">
+                <span class="s2-kpi-label">Total Reservations</span>
+                <strong class="s2-kpi-value">{{ total_reservations }}</strong>
+                <span class="s2-kpi-sub">All requests by section</span>
+            </div>
+        </div>
+
+        {% if upcoming_reservation %}
+            <div class="s2-table-card" style="padding: 18px 22px; margin-bottom: 22px; border-left: 4px solid #16A34A;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                    <div>
+                        <span class="pill pill-approved" style="margin-bottom:6px; display:inline-block;">Upcoming Approved Booking</span>
+                        <h3 style="font-size:1.05rem; margin:2px 0;">{{ upcoming_reservation.subject_name }} ({{ upcoming_reservation.reservation_code }})</h3>
+                        <p class="text-muted" style="font-size:0.85rem; margin:0;">
+                            {{ upcoming_reservation.long_date }} · {{ upcoming_reservation.time_range }} · {{ upcoming_reservation.classroom_name }} · Unit: <strong>{{ upcoming_reservation.projector_code }}</strong>
+                        </p>
+                    </div>
+                    <a href="{{ url_for('booking.my_reservations') }}" class="btn btn-outline-gray">Manage</a>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Recent Reservations Table -->
+        <div class="s2-section-header">
+            <h2>Recent Reservations</h2>
+            <a href="{{ url_for('booking.my_reservations') }}" class="s2-view-all">View all</a>
+        </div>
+
+        <div class="s2-table-card">
+            {% if recent_reservations %}
+                <table class="s2-table">
+                    <thead>
+                        <tr>
+                            <th>Ref. No.</th>
+                            <th>Subject</th>
+                            <th>Date and time</th>
+                            <th>Room</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for res in recent_reservations %}
+                            <tr>
+                                <td class="font-medium">{{ res.reservation_code }}</td>
+                                <td>{{ res.subject_name }}</td>
+                                <td class="text-muted">{{ res.date_time_label }}</td>
+                                <td class="text-muted">{{ res.classroom_name }}</td>
+                                <td><span class="pill pill-{{ res.status.lower() }}">{{ res.status }}</span></td>
+                                <td>
+                                    <a href="{{ url_for('booking.view_reservation', reservation_id=res.reservation_id) }}" class="action-link">View</a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="s2-empty-table">
+                    No reservations yet. Click <strong>+ Reserve a Projector</strong> to create your first booking.
+                </div>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- Logout Confirmation Popup -->
+    <div id="logout-modal" class="plv-modal-backdrop">
+        <div class="plv-modal-box plv-modal-center">
+            <div class="modal-icon-circle icon-blue">&#10140;</div>
+            <h3 style="font-size: 1.15rem; margin-bottom: 6px;">Log out of your account?</h3>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 18px;">
+                You will need to sign in again to reserve a projector. Pending reservations will stay as they are.
+            </p>
+            <div class="form-row-2">
+                <button type="button" class="btn btn-outline-gray" onclick="closeModal('logout-modal')">Stay Logged In</button>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-plv-navy">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal(id) { document.getElementById(id).classList.add('open'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

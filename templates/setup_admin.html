@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initial Admin Setup – PLV Projector Reservation System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+</head>
+<body class="setup-admin-page">
+    <header class="setup-topbar">
+        <div class="setup-topbar-inner">
+            <a href="{{ url_for('auth.admin_login') }}" class="setup-brand">
+                <img src="{{ url_for('static', filename='image/plv-logo.jpg') }}" alt="PLV Logo" class="setup-logo">
+                <div class="setup-brand-text">
+                    <strong>Projector Reservation System</strong>
+                    <small>Pamantasan ng Lungsod ng Valenzuela</small>
+                </div>
+            </a>
+            <a href="{{ url_for('auth.admin_login') }}" class="setup-back-link">&larr; Admin Login</a>
+        </div>
+    </header>
+
+    <div class="setup-wrapper">
+        <aside class="setup-info-card">
+            <h2>Administrator Setup</h2>
+            <p>Set up an Administrator account to manage sections, student accounts, projector units, reservation approvals, and equipment monitoring.</p>
+            <ul class="setup-feature-list">
+                <li><strong>Account Control:</strong> Manage section representatives and administrator credentials.</li>
+                <li><strong>Reservation Control:</strong> Review real-time projector availability and approve or decline requests.</li>
+                <li><strong>Usage Monitoring:</strong> Track projector, release, and return conditions at the NSTP Office.</li>
+            </ul>
+        </aside>
+
+        <main class="setup-form-card">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} setup-alert">
+                            <span>{{ message }}</span>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <h1>Create Administrator Account</h1>
+            <p class="setup-subtitle">Register system administrator credentials for the NSTP Office.</p>
+
+            <form action="{{ url_for('setup_admin') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="admin_id">Employee / Admin ID *</label>
+                        <input type="text" id="admin_id" name="admin_id" placeholder="Enter Admin ID" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="full_name">Administrator Full Name *</label>
+                        <input type="text" id="full_name" name="full_name" placeholder="Enter full name" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">School Email (Optional)</label>
+                    <input type="email" id="email" name="email" placeholder="Enter email address">
+                </div>
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="password">Password *</label>
+                        <input type="password" id="password" name="password" minlength="8" placeholder="Min. 8 characters" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm Password *</label>
+                        <input type="password" id="confirm_password" name="confirm_password" minlength="8" placeholder="Re-enter password" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-submit-admin">Initialize System &amp; Create Admin</button>
+            </form>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

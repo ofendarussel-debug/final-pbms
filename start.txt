@@ -1,0 +1,12 @@
+Run this in terminal once at a time
+
+python -m venv venv
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+.\venv\Scripts\Activate.ps1
+python -m ensurepip --upgrade
+python -m pip install --upgrade pip
+pip -m install -r requirements.txt
+python app.py
+
+This will reset the database to start fresh in demo
+Get-ChildItem -Recurse -Filter "*.db" | Remove-Item -Force; python database.py; python app.py

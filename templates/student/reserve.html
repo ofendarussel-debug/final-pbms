@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reserve a Projector — PLV Projector Reservation</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/layout.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/popups.css') }}">
+</head>
+<body class="app-bg">
+
+    <header class="plv-navbar">
+        <div class="plv-navbar-inner">
+            <a href="{{ url_for('student_dashboard') }}" class="plv-nav-brand">
+                <img src="{{ url_for('static', filename='image/plv-logo.jpg') }}" alt="PLV Logo" class="plv-navbar-logo">
+                <span class="plv-nav-title">PLV Projector Reservation</span>
+            </a>
+
+            <nav class="plv-nav-links">
+                <a href="{{ url_for('student_dashboard') }}" class="plv-nav-item">Dashboard</a>
+                <a href="{{ url_for('booking.reserve') }}" class="plv-nav-item active">Reserve a Projector</a>
+                <a href="{{ url_for('booking.my_reservations') }}" class="plv-nav-item">My Reservations</a>
+            </nav>
+
+            <div class="plv-nav-actions" style="display:flex; align-items:center; gap:10px;">
+                <a href="{{ url_for('booking.profile') }}" class="plv-profile-icon-btn" title="User Profile">&#128100;</a>
+                <button type="button" class="plv-logout-btn" onclick="openModal('logout-modal')">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="s2-container">
+        <div class="step-progress-bar">
+            <span class="step-item {% if step == 1 %}active{% endif %}">
+                <span class="step-circle">1</span>
+                Details
+            </span>
+            <span class="step-connector"></span>
+            <span class="step-item {% if step == 2 %}active{% endif %}">
+                <span class="step-circle">2</span>
+                Review
+            </span>
+            <span class="step-connector"></span>
+            <span class="step-item {% if step == 3 %}active{% endif %}">
+                <span class="step-circle">3</span>
+                Submitted
+            </span>
+        </div>
+
+        {% if step == 1 %}
+            <div style="display: grid; grid-template-columns: 1.65fr 1fr; gap: 22px; align-items: start;">
+                <!-- Left Form Card -->
+                <section class="s2-table-card" style="padding: 24px;">
+                    <form action="{{ url_for('booking.reserve') }}" method="POST" class="web-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="review">
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label>Section</label>
+                                <input type="text" class="form-control" value="{{ form_data.section_name }}" readonly style="background: #F3F4F6;">
+                            </div>
+                            <div class="form-group">
+                                <label for="subject_name">Subject</label>
+                                <input type="text" id="subject_name" name="subject_name" list="subject-suggestions" class="form-control"
+                                       placeholder="Enter subject name" value="{{ form_data.subject_name }}" required>
+                                <datalist id="subject-suggestions">
+                                    {% for subj in existing_subjects %}
+                                        <option value="{{ subj }}">
+                                    {% endfor %}
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="instructor_name">Instructor</label>
+                                <input type="text" id="instructor_name" name="instructor_name" class="form-control"
+                                       placeholder="Instructor name" value="{{ form_data.instructor_name }}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="classroom_name">Room / Classroom</label>
+                                <input type="text" id="classroom_name" name="classroom_name" list="room-suggestions" class="form-control"
+                                       placeholder="Enter room / classroom" value="{{ form_data.classroom_name }}" required>
+                                <datalist id="room-suggestions">
+                                    {% for room in existing_classrooms %}
+                                        <option value="{{ room }}">
+                                    {% endfor %}
+                                </datalist>
+                            </div>
+                        </div>
+
+                        <div class="form-row-2">
+                            <div class="form-group">
+                                <label for="reservation_date">Date</label>
+                                <input type="date" id="reservation_date" name="reservation_date" class="form-control"
+                                       value="{{ form_data.reservation_date }}" required onchange="refreshSlotAvailability()">
+                            </div>
+                            <div class="form-group">
+                                <label for="time_slot">Time slot</label>
+                                <select id="time_slot" name="time_slot" class="form-control" onchange="refreshSlotAvailability()">
+                                    {% for s in time_slots %}
+                                        <option value="{{ s.value }}" {% if s.value == form_data.time_slot %}selected{% endif %}>{{ s.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="remarks">Purpose / remarks <span class="text-muted">(optional)</span></label>
+                            <textarea id="remarks" name="remarks" rows="3" class="form-control"
+                                      placeholder="Enter purpose or remarks">{{ form_data.remarks }}</textarea>
+                        </div>
+
+                        <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 14px; border-top: 1px solid #E5E7EB; margin-top: 10px;">
+                            <a href="{{ url_for('student_dashboard') }}" class="btn btn-outline-gray">Cancel</a>
+                            <button type="submit" class="btn btn-plv-navy">Check availability and continue</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- Right Live Availability & Reminder -->
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <section class="s2-table-card" style="padding: 20px;">
+                        <p class="text-muted" style="font-size: 0.82rem; margin-bottom: 4px;">Availability</p>
+                        <h2 id="avail-count" style="font-size: 1.75rem; font-weight: 800; color: #111827; margin: 0;">
+                            {{ availability.available_count }} of {{ availability.total_units }}
+                        </h2>
+                        <p id="avail-summary" class="text-muted" style="font-size: 0.82rem; margin: 4px 0 14px 0;">
+                            units are available for {{ availability.formatted_summary }}
+                        </p>
+
+                        <div id="avail-unit-list" style="display: flex; flex-direction: column; gap: 10px;">
+                            {% for unit in availability.units %}
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                                    <span class="font-medium">{{ unit.projector_code }}</span>
+                                    <span class="pill {{ unit.badge_class }}">{{ unit.display_status }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </section>
+
+                    <div style="background: #FFFBEB; border: 1px solid #FDE68A; border-radius: 12px; padding: 16px;">
+                        <strong style="color: #B45309; font-size: 0.9rem; display: block; margin-bottom: 4px;">Reminder</strong>
+                        <p style="color: #92400E; font-size: 0.82rem; margin: 0;">
+                            Please return the projector to the NSTP Office right after your class so the next section can use it.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+        {% elif step == 2 %}
+            <!-- Step 2: Review Before Submitting -->
+            <section class="s2-table-card" style="padding: 24px; max-width: 680px;">
+                <h2 style="font-size: 1.15rem; margin-bottom: 6px;">Review your reservation</h2>
+                <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 16px;">
+                    Please verify your details before sending your request to the Administrator.
+                </p>
+
+                <table class="s2-table">
+                    <tbody>
+                        <tr><td class="text-muted">Section</td><td class="font-medium">{{ form_data.section_name }}</td></tr>
+                        <tr><td class="text-muted">Subject</td><td class="font-medium">{{ form_data.subject_name }}</td></tr>
+                        <tr><td class="text-muted">Instructor</td><td class="font-medium">{{ form_data.instructor_name }}</td></tr>
+                        <tr><td class="text-muted">Room / Classroom</td><td class="font-medium">{{ form_data.classroom_name }}</td></tr>
+                        <tr><td class="text-muted">Date</td><td class="font-medium">{{ formatted_full_date }}</td></tr>
+                        <tr><td class="text-muted">Time Slot</td><td class="font-medium">{{ slot.label }}</td></tr>
+                        <tr><td class="text-muted">Remarks</td><td class="font-medium">{{ form_data.remarks or 'None' }}</td></tr>
+                    </tbody>
+                </table>
+
+                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <form action="{{ url_for('booking.reserve') }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="edit">
+                        <input type="hidden" name="subject_name" value="{{ form_data.subject_name }}">
+                        <input type="hidden" name="instructor_name" value="{{ form_data.instructor_name }}">
+                        <input type="hidden" name="classroom_name" value="{{ form_data.classroom_name }}">
+                        <input type="hidden" name="reservation_date" value="{{ form_data.reservation_date }}">
+                        <input type="hidden" name="time_slot" value="{{ form_data.time_slot }}">
+                        <input type="hidden" name="remarks" value="{{ form_data.remarks }}">
+                        <button type="submit" class="btn btn-outline-gray">Back to Edit</button>
+                    </form>
+
+                    <form action="{{ url_for('booking.reserve') }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="confirm">
+                        <input type="hidden" name="subject_name" value="{{ form_data.subject_name }}">
+                        <input type="hidden" name="instructor_name" value="{{ form_data.instructor_name }}">
+                        <input type="hidden" name="classroom_name" value="{{ form_data.classroom_name }}">
+                        <input type="hidden" name="reservation_date" value="{{ form_data.reservation_date }}">
+                        <input type="hidden" name="time_slot" value="{{ form_data.time_slot }}">
+                        <input type="hidden" name="remarks" value="{{ form_data.remarks }}">
+                        <button type="submit" class="btn btn-plv-navy">Submit Reservation</button>
+                    </form>
+                </div>
+            </section>
+
+        {% elif step == 3 and submitted_reservation %}
+            <!-- Step 3: Submitted Confirmation -->
+            <section class="s2-table-card" style="padding: 32px 24px; max-width: 620px; text-align: center;">
+                <div class="modal-icon-circle icon-green">&#10003;</div>
+                <h2 style="font-size: 1.3rem; margin-bottom: 6px;">Reservation Submitted!</h2>
+                <p class="text-muted" style="font-size: 0.88rem; margin-bottom: 18px;">
+                    Reference Number: <strong>{{ submitted_reservation.reservation_code }}</strong> · Status: <span class="pill pill-pending">Pending</span>
+                </p>
+
+                <div class="modal-summary-card">
+                    <strong>{{ submitted_reservation.subject_name }}</strong> ({{ submitted_reservation.section_name }})<br>
+                    <span>{{ submitted_reservation.formatted_date }} · {{ submitted_reservation.time_label }}</span><br>
+                    <span class="text-muted">Room: {{ submitted_reservation.classroom_name }} · Instructor: {{ submitted_reservation.instructor_name }}</span>
+                </div>
+
+                <div style="display: flex; justify-content: center; gap: 10px; margin-top: 20px;">
+                    <a href="{{ url_for('booking.my_reservations') }}" class="btn btn-outline-gray">View My Reservations</a>
+                    <a href="{{ url_for('student_dashboard') }}" class="btn btn-plv-navy">Back to Dashboard</a>
+                </div>
+            </section>
+        {% endif %}
+    </main>
+
+    <!-- Logout Confirmation Popup -->
+    <div id="logout-modal" class="plv-modal-backdrop">
+        <div class="plv-modal-box plv-modal-center">
+            <div class="modal-icon-circle icon-blue">&#10140;</div>
+            <h3 style="font-size: 1.15rem; margin-bottom: 6px;">Log out of your account?</h3>
+            <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 18px;">
+                You will need to sign in again to reserve a projector. Pending reservations will stay as they are.
+            </p>
+            <div class="form-row-2">
+                <button type="button" class="btn btn-outline-gray" onclick="closeModal('logout-modal')">Stay Logged In</button>
+                <a href="{{ url_for('auth.logout') }}" class="btn btn-plv-navy">Logout</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openModal(id) { document.getElementById(id).classList.add('open'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+        async function refreshSlotAvailability() {
+            const dateInput = document.getElementById('reservation_date');
+            const slotInput = document.getElementById('time_slot');
+            if (!dateInput || !slotInput) return;
+
+            const resp = await fetch(`/api/availability?date=${encodeURIComponent(dateInput.value)}&time_slot=${encodeURIComponent(slotInput.value)}`);
+            if (!resp.ok) return;
+            const data = await resp.json();
+
+            document.getElementById('avail-count').textContent = `${data.available_count} of ${data.total_units}`;
+            document.getElementById('avail-summary').textContent = `units are available for ${data.formatted_summary}`;
+
+            const listEl = document.getElementById('avail-unit-list');
+            listEl.innerHTML = data.units.map(u => `
+                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+                    <span class="font-medium">${u.projector_code}</span>
+                    <span class="pill ${u.badge_class}">${u.display_status}</span>
+                </div>
+            `).join('');
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
